@@ -1,0 +1,30 @@
+{
+    "name": "localzet/mqtt",
+    "description": "MQTT Server",
+    "type": "library",
+    "keywords": [
+        "localzet"
+    ],
+    "license": "AGPL-3.0-or-later",
+    "authors": [
+        {
+            "role": "Developer",
+            "name": "Ivan Zorin",
+            "email": "creator@localzet.com",
+            "homepage": "https://github.com/localzet"
+        }
+    ],
+    "support": {
+        "email": "support@localzet.com",
+        "issues": "https://github.com/localzet/MQTT/issues",
+        "source": "https://github.com/localzet/MQTT"
+    },
+    "require": {
+        "localzet/server": "^4.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "localzet\\MQTT\\": "src/"
+        }
+    }
+}
