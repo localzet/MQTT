@@ -1,27 +1,38 @@
 <?php
-/**
- * This file is part of workerman.
- *
- * Licensed under The MIT License
- * For full copyright and license information, please see the MIT-LICENSE.txt
- * Redistributions of files must retain the above copyright notice.
- *
- * @author    walkor<walkor@workerman.net>
- * @copyright walkor<walkor@workerman.net>
- * @link      http://www.workerman.net/
- * @license   http://www.opensource.org/licenses/mit-license.php MIT License
- */
-namespace Workerman\Mqtt;
 
-use \Workerman\Connection\AsyncTcpConnection;
-use Workerman\Mqtt\Consts\MQTTConst;
-use Workerman\Mqtt\Consts\ReasonCodeConst;
-use \Workerman\Protocols\Mqtt;
-use \Workerman\Timer;
+/**
+ * @package     Localzet MQTT
+ * @link        https://github.com/localzet/MQTT
+ *
+ * @author      Ivan Zorin <creator@localzet.com>
+ * @copyright   Copyright © 2016-2026 Localzet Group. All rights reserved.
+ * @license     https://www.gnu.org/licenses/agpl-3.0 GNU Affero General Public License v3.0
+ *
+ *              This program is free software: you can redistribute it and/or modify
+ *              it under the terms of the GNU Affero General Public License as published
+ *              by the Free Software Foundation, either version 3 of the License, or
+ *              (at your option) any later version.
+ *
+ *              This program is distributed in the hope that it will be useful,
+ *              but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *              MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *              GNU Affero General Public License for more details.
+ *
+ *              You should have received a copy of the GNU Affero General Public License
+ *              along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ *              For any questions, please contact <creator@localzet.com>
+*/
+namespace localzet\MQTT;
+
+use localzet\Server\Connection\AsyncTcpConnection;
+use localzet\MQTT\Consts\MQTTConst;
+use localzet\MQTT\Consts\ReasonCodeConst;
+use localzet\Timer;
 
 /**
  * Class Client
- * @package Workerman\Mqtt
+ * @package Localzet MQTT
  */
 class Client
 {
@@ -53,7 +64,7 @@ class Client
     /**
      * DEFAULT_CLIENT_ID_PREFIX
      */
-    const DEFAULT_CLIENT_ID_PREFIX = 'workerman-mqtt-client';
+    const DEFAULT_CLIENT_ID_PREFIX = 'localzet-mqtt-client';
 
     /**
      * MAX_TOPIC_LENGTH
@@ -193,16 +204,9 @@ class Client
     {
         $this->setOptions($options);
 
-        $class_name = '\Workerman\Protocols\Mqtt';
-        if ((int)$this->_options['protocol_level'] === 5) {
-            if (!class_exists($class_name)) {
-                class_alias('\Workerman\Mqtt\Protocols\Mqtt5', $class_name);
-            }
-        } else{
-            if (!class_exists($class_name)) {
-                class_alias('\Workerman\Mqtt\Protocols\Mqtt', $class_name);
-            }
-        }
+        $class_name = (int) $this->_options['protocol_level'] === 5
+            ? \localzet\MQTT\Server\Protocols\Mqtt5::class
+            : \localzet\MQTT\Server\Protocols\Mqtt::class;
 
 
         $context = array();
@@ -213,18 +217,25 @@ class Client
             $context['ssl'] = $this->_options['ssl'];
         }
 
-        if (strpos($address, 'mqtts') === 0) {
-            if (empty($this->_options['ssl'])) {
+        $scheme = strtolower((string) parse_url($address, PHP_URL_SCHEME));
+        if ($scheme === 'mqtt' || $scheme === 'mqtts') {
+            $addressParts = parse_url($address);
+            if (!is_array($addressParts) || empty($addressParts['host'])) {
+                throw new \InvalidArgumentException('MQTT address must include a host.');
+            }
+
+            if ($scheme === 'mqtts' && empty($this->_options['ssl'])) {
                 $this->_options['ssl'] = true;
             }
-            $address = str_replace('mqtts', 'mqtt', $address);
-        }
 
-//        if ((int)$this->_options['protocol_level'] === 5) {
-//            if (strpos($address, 'mqtt') === 0) {
-//                $address = str_replace('mqtt', 'mqtt5', $address);
-//            }
-//        }
+            $host = $addressParts['host'];
+            if (str_contains($host, ':')) {
+                $host = '[' . trim($host, '[]') . ']';
+            }
+
+            $port = $addressParts['port'] ?? ($scheme === 'mqtts' ? 8883 : 1883);
+            $address = "tcp://{$host}:{$port}";
+        }
 
         $this->_remoteAddress = $address;
         $this->_connection    = new AsyncTcpConnection($address, $context);

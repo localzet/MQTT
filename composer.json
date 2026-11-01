@@ -1,6 +1,6 @@
 {
   "name": "localzet/mqtt",
-  "description": "An unfinished MQTT client adaptation for Localzet Server.",
+  "description": "MQTT client for Localzet Server.",
   "type": "library",
   "keywords": [
     "localzet"
@@ -12,11 +12,6 @@
       "name": "Ivan Zorin",
       "email": "creator@localzet.com",
       "homepage": "https://github.com/localzet"
-    },
-    {
-      "name": "walkor",
-      "email": "walkor@workerman.net",
-      "role": "Original MQTT author"
     }
   ],
   "support": {
@@ -25,11 +20,15 @@
     "source": "https://github.com/localzet/MQTT"
   },
   "require": {
-    "localzet/server": "^4.1"
+    "localzet/server": "^7.0"
   },
   "autoload": {
     "psr-4": {
       "localzet\\MQTT\\": "src/"
     }
+  },
+  "scripts": {
+    "test": "php tests/protocol_regression.php",
+    "test:broker": "bash tests/run-broker-integration.sh"
   }
 }

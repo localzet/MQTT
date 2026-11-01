@@ -2,34 +2,36 @@
 
 [Русская документация](README.ru.md)
 
-An unfinished MQTT client adaptation for Localzet Server.
+An MQTT 3.1.1 and MQTT 5 client for Localzet Server 7.
 
 ## Status and compatibility
 
-This source revision is not a usable Localzet MQTT package: source namespaces and runtime imports still target the original runtime while Composer declares localzet\MQTT. The MQTT 3/5 transport port, namespace compatibility, broker integration and parser limits must be completed. No installation example is presented as working.
+The client uses the Localzet Server 7 connection and timer APIs. Its MQTT 3.1.1 and MQTT 5 protocol adapters implement Server's protocol interface, and Composer autoloading matches the `localzet\\MQTT` namespace.
 
-This is a Server 4.x component; Server 7.x compatibility is not established.
+Protocol regression tests cover partial frames, ping encode/decode, and `mqtt://` / `mqtts://` address selection. The broker integration suite checks username/password authentication, QoS 1 delivery and acknowledgements with MQTT 3.1.1 and MQTT 5 over TCP and TLS, plus broker restart and resubscription after reconnect. It uses an ephemeral Mosquitto broker.
 
 ## Dependencies
 
-- `localzet/server`: `^4.1`
+- `localzet/server`: `^7.0`
 
 ## Installation
 
-The namespace/runtime port must be completed before usage.
+Install the package with Composer after checking that the selected Server release satisfies `^7.0`. Broker-level behavior remains experimental; validate it against the broker and TLS configuration used by your application.
 
 ## Development checks
 
 ```sh
 composer validate --strict
-# Autoload fails until the namespace/runtime port is complete.
+composer run test
+composer run test:broker
 ```
+
+`test:broker` requires Docker and uses a temporary Mosquitto broker. It generates disposable credentials and a self-signed certificate; set `MQTT_TEST_PLAIN_PORT` and `MQTT_TEST_TLS_PORT` if local ports 1883 or 8883 are already in use. Test clients disable certificate verification for the ephemeral self-signed certificate, so CI verifies TLS negotiation, not certificate trust configuration.
 
 Installation, lint and autoload checks do not establish end-to-end behavior or production readiness.
 
 ## Author and license
 
-Ivan Zorin (`localzet`), <creator@localzet.com>, https://www.localzet.com.
-Source: https://github.com/localzet/MQTT. AGPL-3.0-or-later; [LICENSE](LICENSE). Original copyright and third-party licenses remain applicable.
+Copyright © 2016-2026 [Localzet Group](https://www.localzet.com/). All rights reserved. AGPL-3.0-or-later; [LICENSE](LICENSE).
 
 [Authors](.github/AUTHORS.md) · [Contributing](.github/CONTRIBUTING.md) · [Security](.github/SECURITY.md)

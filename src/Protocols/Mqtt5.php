@@ -1,29 +1,41 @@
 <?php
+
 /**
- * This file is part of workerman.
+ * @package     Localzet MQTT
+ * @link        https://github.com/localzet/MQTT
  *
- * Licensed under The MIT License
- * For full copyright and license information, please see the MIT-LICENSE.txt
- * Redistributions of files must retain the above copyright notice.
+ * @author      Ivan Zorin <creator@localzet.com>
+ * @copyright   Copyright © 2016-2026 Localzet Group. All rights reserved.
+ * @license     https://www.gnu.org/licenses/agpl-3.0 GNU Affero General Public License v3.0
  *
- * @author    walkor<walkor@workerman.net>
- * @copyright walkor<walkor@workerman.net>
- * @link      http://www.workerman.net/
- * @license   http://www.opensource.org/licenses/mit-license.php MIT License
- */
+ *              This program is free software: you can redistribute it and/or modify
+ *              it under the terms of the GNU Affero General Public License as published
+ *              by the Free Software Foundation, either version 3 of the License, or
+ *              (at your option) any later version.
+ *
+ *              This program is distributed in the hope that it will be useful,
+ *              but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *              MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *              GNU Affero General Public License for more details.
+ *
+ *              You should have received a copy of the GNU Affero General Public License
+ *              along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ *              For any questions, please contact <creator@localzet.com>
+*/
 
-namespace Workerman\Mqtt\Protocols;
+namespace localzet\MQTT\Protocols;
 
-use Workerman\Mqtt\Consts\MQTTConst;
-use Workerman\Mqtt\Handle\DecodeTrait;
-use Workerman\Mqtt\Handle\DecodeV5;
-use Workerman\Mqtt\Handle\EncodeTrait;
-use Workerman\Mqtt\Handle\EncodeV5;
+use localzet\MQTT\Consts\MQTTConst;
+use localzet\MQTT\Handle\DecodeTrait;
+use localzet\MQTT\Handle\DecodeV5;
+use localzet\MQTT\Handle\EncodeTrait;
+use localzet\MQTT\Handle\EncodeV5;
 
 /**
  * Mqtt5 Protocol.
  *
- * @author    maoxps
+ * @author    Ivan Zorin
  */
 class Mqtt5
 {
@@ -118,7 +130,7 @@ class Mqtt5
     /**
      * 用于请求解包
      *
-     * input返回值大于0，并且WorkerMan收到了足够的数据，则自动调用decode
+     * input返回值大于0，并且Localzet Server收到了足够的数据，则自动调用decode
      * 然后触发onMessage回调，并将decode解码后的数据传递给onMessage回调的第二个参数
      * 也就是说当收到完整的客户端请求时，会自动调用decode解码，无需业务代码中手动调用
      * @param string $buffer
