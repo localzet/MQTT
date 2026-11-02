@@ -16,7 +16,14 @@ Protocol regression tests cover partial frames, ping encode/decode, and `mqtt://
 
 ## Installation
 
-Install the package with Composer after checking that the selected Server release satisfies `^7.0`. Broker-level behavior remains experimental; validate it against the broker and TLS configuration used by your application.
+The package is not published on Packagist yet. Add the VCS repository to the application's `composer.json` and install branch `dev-main`:
+
+```sh
+composer config repositories.localzet-mqtt vcs https://github.com/localzet/MQTT
+composer require localzet/mqtt:dev-main
+```
+
+Broker-level behavior remains experimental; validate it against the broker and TLS configuration used by your application.
 
 ## Development checks
 
