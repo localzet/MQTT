@@ -82,7 +82,10 @@ $worker->onServerStart = static function () use ($address, $options, $level, $re
         Server::stopAll($code, $message);
     };
 
-    $subscriber->onError = static function (Throwable $error) use ($finish): void {
+    $subscriber->onError = static function (Throwable $error) use ($finish, $reconnectScenario): void {
+        if ($reconnectScenario && $error->getCode() === 102) {
+            return;
+        }
         $finish(1, 'Subscriber failed: ' . $error->getMessage());
     };
     $publisher->onError = static function (Throwable $error) use ($finish): void {
