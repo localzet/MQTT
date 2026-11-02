@@ -28,10 +28,15 @@ if (is_file($autoload)) {
 }
 
 $level = (int) (getenv('MQTT_TEST_PROTOCOL_LEVEL') ?: '4');
+$qos = (int) (getenv('MQTT_TEST_QOS') ?: '1');
 $GLOBALS['mqttTestLevel'] = $level;
+$GLOBALS['mqttTestQos'] = $qos;
 $GLOBALS['mqttTestPassed'] = false;
 if (!in_array($level, [4, 5], true)) {
     throw new InvalidArgumentException('MQTT_TEST_PROTOCOL_LEVEL must be 4 or 5.');
+}
+if (!in_array($qos, [1, 2], true)) {
+    throw new InvalidArgumentException('MQTT_TEST_QOS must be 1 or 2.');
 }
 $address = getenv('MQTT_TEST_URL') ?: 'mqtt://127.0.0.1:1883';
 $reconnectScenario = getenv('MQTT_TEST_RECONNECT') === '1';
@@ -63,7 +68,7 @@ if (!$controlAddress) {
 $worker = new Server($controlAddress);
 $worker->count = 1;
 $worker->name = 'mqtt-integration';
-$worker->onServerStart = static function () use ($address, $options, $level, $reconnectScenario, $restartFile): void {
+$worker->onServerStart = static function () use ($address, $options, $level, $qos, $reconnectScenario, $restartFile): void {
     $topic = 'localzet/integration/' . bin2hex(random_bytes(8));
     $payload = 'mqtt-v' . $level . '-' . bin2hex(random_bytes(8));
     $finished = false;
@@ -91,11 +96,11 @@ $worker->onServerStart = static function () use ($address, $options, $level, $re
     $publisher->onError = static function (Throwable $error) use ($finish): void {
         $finish(1, 'Publisher failed: ' . $error->getMessage());
     };
-    $publish = static function () use ($publisher, $topic, $payload, &$messageReceived, &$publishAcknowledged, $finish): void {
-        $publisher->onConnect = static function (Client $client) use ($topic, $payload, &$messageReceived, &$publishAcknowledged, $finish): void {
-            $client->publish($topic, $payload, ['qos' => 1], static function (?Throwable $error) use (&$messageReceived, &$publishAcknowledged, $finish): void {
+    $publish = static function () use ($publisher, $topic, $payload, $qos, &$messageReceived, &$publishAcknowledged, $finish): void {
+        $publisher->onConnect = static function (Client $client) use ($topic, $payload, $qos, &$messageReceived, &$publishAcknowledged, $finish): void {
+            $client->publish($topic, $payload, ['qos' => $qos], static function (?Throwable $error) use ($qos, &$messageReceived, &$publishAcknowledged, $finish): void {
                 if ($error !== null) {
-                    $finish(1, 'QoS 1 publish was not acknowledged: ' . $error->getMessage());
+                    $finish(1, "QoS {$qos} publish was not acknowledged: " . $error->getMessage());
                     return;
                 }
                 $publishAcknowledged = true;
@@ -119,8 +124,8 @@ $worker->onServerStart = static function () use ($address, $options, $level, $re
         if (is_callable($defaultReconnect)) $defaultReconnect($client);
         if ($reconnectScenario) Timer::add(0.25, $publish, [], false);
     };
-    $subscriber->onConnect = static function (Client $client) use ($topic, $reconnectScenario, $restartFile, $publish, $finish): void {
-        $client->subscribe($topic, ['qos' => 1], static function (?Throwable $error) use ($reconnectScenario, $restartFile, $publish, $finish): void {
+    $subscriber->onConnect = static function (Client $client) use ($topic, $qos, $reconnectScenario, $restartFile, $publish, $finish): void {
+        $client->subscribe($topic, ['qos' => $qos], static function (?Throwable $error) use ($reconnectScenario, $restartFile, $publish, $finish): void {
             if ($error !== null) {
                 $finish(1, 'Subscribe failed: ' . $error->getMessage());
                 return;
@@ -133,7 +138,7 @@ $worker->onServerStart = static function () use ($address, $options, $level, $re
         });
     };
 
-    Timer::add(25, static fn () => $finish(1, 'Timed out waiting for authenticated MQTT QoS 1 delivery and acknowledgement.'), [], false);
+    Timer::add(25, static fn () => $finish(1, "Timed out waiting for authenticated MQTT QoS {$qos} delivery and acknowledgement."), [], false);
     $subscriber->connect();
 };
 
