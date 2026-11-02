@@ -10,20 +10,22 @@ The client uses the Localzet Server 7 connection and timer APIs. Its MQTT 3.1.1 
 
 Protocol regression tests cover partial frames, ping encode/decode, and `mqtt://` / `mqtts://` address selection. The broker integration suite checks username/password authentication, QoS 1 delivery and acknowledgements with MQTT 3.1.1 and MQTT 5 over TCP and TLS, plus broker restart and resubscription after reconnect. It uses an ephemeral Mosquitto broker.
 
+## Supported behavior
+
+The client supports MQTT 3.1.1 and MQTT 5 over TCP and TLS, username/password authentication, QoS 0/1/2 publish and subscribe, acknowledgements and reconnect/resubscription. Integration coverage exercises QoS 1 and 2 against Mosquitto; validate behavior and TLS trust configuration with the broker deployment you operate.
+
 ## Dependencies
 
+- `php`: `>=8.1`
 - `localzet/server`: `^7.0`
 
 ## Installation
 
-The package is not published on Packagist yet. Add the VCS repository to the application's `composer.json` and install branch `dev-main`:
+Install the Server 7 release line:
 
 ```sh
-composer config repositories.localzet-mqtt vcs https://github.com/localzet/MQTT
-composer require localzet/mqtt:dev-main
+composer require localzet/mqtt:^1.0
 ```
-
-Broker-level behavior remains experimental; validate it against the broker and TLS configuration used by your application.
 
 ## Development checks
 
@@ -31,11 +33,12 @@ Broker-level behavior remains experimental; validate it against the broker and T
 composer validate --strict
 composer run test
 composer run test:broker
+composer audit --abandoned=report
 ```
 
 `test:broker` requires Docker and uses a temporary Mosquitto broker. It generates disposable credentials and a self-signed certificate; set `MQTT_TEST_PLAIN_PORT` and `MQTT_TEST_TLS_PORT` if local ports 1883 or 8883 are already in use. Test clients disable certificate verification for the ephemeral self-signed certificate, so CI verifies TLS negotiation, not certificate trust configuration.
 
-Installation, lint and autoload checks do not establish end-to-end behavior or production readiness.
+The broker integration suite verifies the documented MQTT 3.1.1 and MQTT 5 flows against Mosquitto. It does not establish compatibility with every broker or deployment-specific certificate trust.
 
 ## Author and license
 

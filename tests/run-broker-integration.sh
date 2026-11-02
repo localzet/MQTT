@@ -41,15 +41,17 @@ if [[ "$ready" != 1 ]]; then
 fi
 
 run_case() {
-    MQTT_TEST_URL="$1" MQTT_TEST_PROTOCOL_LEVEL="$2" \
+    MQTT_TEST_URL="$1" MQTT_TEST_PROTOCOL_LEVEL="$2" MQTT_TEST_QOS="$3" \
         MQTT_TEST_USERNAME=integration-user MQTT_TEST_PASSWORD=integration-password \
         php -d disable_functions=pcntl_fork "$(dirname "$0")/broker_integration.php" start
 }
 
-run_case "mqtt://127.0.0.1:${plain_port}" 4
-run_case "mqtt://127.0.0.1:${plain_port}" 5
-run_case "mqtts://127.0.0.1:${tls_port}" 4
-run_case "mqtts://127.0.0.1:${tls_port}" 5
+for protocol_level in 4 5; do
+    for qos in 1 2; do
+        run_case "mqtt://127.0.0.1:${plain_port}" "$protocol_level" "$qos"
+        run_case "mqtts://127.0.0.1:${tls_port}" "$protocol_level" "$qos"
+    done
+done
 
 run_reconnect_case() {
     marker="$workdir/reconnect-ready"
