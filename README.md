@@ -6,7 +6,7 @@ An MQTT 3.1.1 and MQTT 5 client for Localzet Server 7.
 
 ## Status and compatibility
 
-The client uses the Localzet Server 7 connection and timer APIs. Its MQTT 3.1.1 and MQTT 5 protocol adapters implement Server's protocol interface, and Composer autoloading matches the `localzet\\MQTT` namespace.
+The client uses the Localzet Server 7 connection and timer APIs. Its MQTT 3.1.1 and MQTT 5 protocol adapters implement Server's protocol interface. Composer exposes the listener adapters as `localzet\\Server\\Protocols\\Mqtt` and `localzet\\Server\\Protocols\\Mqtt5`, so Server 7 can resolve `mqtt://` and `mqtt5://` listener schemes. The `mqtts://` URL described below is a TLS client destination, not a Server listener scheme.
 
 Protocol regression tests cover partial frames, ping encode/decode, and `mqtt://` / `mqtts://` address selection. The broker integration suite checks username/password authentication, QoS delivery and acknowledgements with MQTT 3.1.1 and MQTT 5 over TCP and TLS, broker restart and resubscription after reconnect, and rejection of untrusted certificates and mismatched peer names. It uses an ephemeral Mosquitto broker.
 

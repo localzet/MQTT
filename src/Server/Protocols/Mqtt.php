@@ -26,7 +26,7 @@ declare(strict_types=1);
  *              For any questions, please contact <creator@localzet.com>
 */
 
-namespace localzet\MQTT\Server\Protocols;
+namespace localzet\Server\Protocols;
 
 use InvalidArgumentException;
 use localzet\MQTT\Protocols\Mqtt as Codec;

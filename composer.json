@@ -24,8 +24,12 @@
     "localzet/server": "^7.0"
   },
   "autoload": {
+    "files": [
+      "src/Server/Protocols/aliases.php"
+    ],
     "psr-4": {
-      "localzet\\MQTT\\": "src/"
+      "localzet\\MQTT\\": "src/",
+      "localzet\\Server\\Protocols\\": "src/Server/Protocols/"
     }
   },
   "scripts": {
