@@ -27,8 +27,23 @@ if (is_file($autoload)) {
     });
 }
 
+class MqttIntegrationClient extends Client
+{
+    public array $connectionErrorMessages = [];
+
+    public function onConnectionError($connection, $code, $message = '')
+    {
+        if (is_string($message)) {
+            $this->connectionErrorMessages[] = $message;
+        }
+
+        parent::onConnectionError($connection, $code);
+    }
+}
+
 $level = (int) (getenv('MQTT_TEST_PROTOCOL_LEVEL') ?: '4');
 $qos = (int) (getenv('MQTT_TEST_QOS') ?: '1');
+$expectTlsFailure = getenv('MQTT_TEST_EXPECT_TLS_FAILURE') === '1';
 $GLOBALS['mqttTestLevel'] = $level;
 $GLOBALS['mqttTestQos'] = $qos;
 $GLOBALS['mqttTestPassed'] = false;
@@ -53,7 +68,15 @@ $options = [
     'reconnect_period' => $reconnectScenario ? 1 : 0,
 ];
 if (str_starts_with($address, 'mqtts://')) {
-    $options['ssl'] = ['verify_peer' => false, 'verify_peer_name' => false];
+    $options['ssl'] = [];
+    $caFile = getenv('MQTT_TEST_TLS_CAFILE') ?: '';
+    $peerName = getenv('MQTT_TEST_TLS_PEER_NAME') ?: '';
+    if ($caFile !== '') {
+        $options['ssl']['cafile'] = $caFile;
+    }
+    if ($peerName !== '') {
+        $options['ssl']['peer_name'] = $peerName;
+    }
 }
 
 Server::$pidFile = sys_get_temp_dir() . '/localzet-mqtt-test-' . getmypid() . '.pid';
@@ -68,14 +91,14 @@ if (!$controlAddress) {
 $worker = new Server($controlAddress);
 $worker->count = 1;
 $worker->name = 'mqtt-integration';
-$worker->onServerStart = static function () use ($address, $options, $level, $qos, $reconnectScenario, $restartFile): void {
+$worker->onServerStart = static function () use ($address, $options, $level, $qos, $reconnectScenario, $restartFile, $expectTlsFailure): void {
     $topic = 'localzet/integration/' . bin2hex(random_bytes(8));
     $payload = 'mqtt-v' . $level . '-' . bin2hex(random_bytes(8));
     $finished = false;
     $messageReceived = false;
     $publishAcknowledged = false;
-    $subscriber = new Client($address, $options + ['client_id' => 'subscriber-' . getmypid()]);
-    $publisher = new Client($address, $options + ['client_id' => 'publisher-' . getmypid()]);
+    $subscriber = new MqttIntegrationClient($address, $options + ['client_id' => 'subscriber-' . getmypid()]);
+    $publisher = new MqttIntegrationClient($address, $options + ['client_id' => 'publisher-' . getmypid()]);
 
     $finish = static function (int $code, string $message = '') use (&$finished, $subscriber, $publisher): void {
         if ($finished) return;
@@ -87,7 +110,14 @@ $worker->onServerStart = static function () use ($address, $options, $level, $qo
         Server::stopAll($code, $message);
     };
 
-    $subscriber->onError = static function (Throwable $error) use ($finish, $reconnectScenario): void {
+    $subscriber->onError = static function (Throwable $error) use ($finish, $reconnectScenario, $expectTlsFailure, $subscriber): void {
+        if ($expectTlsFailure) {
+            $details = implode("\n", $subscriber->connectionErrorMessages);
+            $expectedFailure = in_array($error->getCode(), [100, 102], true)
+                && preg_match('/tls|certificate|peer name|hostname/i', $details) === 1;
+            $finish($expectedFailure ? 0 : 1, $expectedFailure ? '' : 'TLS verification did not reject the connection as expected.');
+            return;
+        }
         if ($reconnectScenario && $error->getCode() === 102) {
             return;
         }
@@ -124,7 +154,12 @@ $worker->onServerStart = static function () use ($address, $options, $level, $qo
         if (is_callable($defaultReconnect)) $defaultReconnect($client);
         if ($reconnectScenario) Timer::add(0.25, $publish, [], false);
     };
-    $subscriber->onConnect = static function (Client $client) use ($topic, $qos, $reconnectScenario, $restartFile, $publish, $finish): void {
+    $subscriber->onConnect = static function (Client $client) use ($topic, $qos, $reconnectScenario, $restartFile, $publish, $finish, $expectTlsFailure): void {
+        if ($expectTlsFailure) {
+            $finish(1, 'TLS verification accepted a certificate that should have been rejected.');
+            return;
+        }
+
         $client->subscribe($topic, ['qos' => $qos], static function (?Throwable $error) use ($reconnectScenario, $restartFile, $publish, $finish): void {
             if ($error !== null) {
                 $finish(1, 'Subscribe failed: ' . $error->getMessage());

@@ -8,11 +8,11 @@ An MQTT 3.1.1 and MQTT 5 client for Localzet Server 7.
 
 The client uses the Localzet Server 7 connection and timer APIs. Its MQTT 3.1.1 and MQTT 5 protocol adapters implement Server's protocol interface, and Composer autoloading matches the `localzet\\MQTT` namespace.
 
-Protocol regression tests cover partial frames, ping encode/decode, and `mqtt://` / `mqtts://` address selection. The broker integration suite checks username/password authentication, QoS 1 delivery and acknowledgements with MQTT 3.1.1 and MQTT 5 over TCP and TLS, plus broker restart and resubscription after reconnect. It uses an ephemeral Mosquitto broker.
+Protocol regression tests cover partial frames, ping encode/decode, and `mqtt://` / `mqtts://` address selection. The broker integration suite checks username/password authentication, QoS delivery and acknowledgements with MQTT 3.1.1 and MQTT 5 over TCP and TLS, broker restart and resubscription after reconnect, and rejection of untrusted certificates and mismatched peer names. It uses an ephemeral Mosquitto broker.
 
 ## Supported behavior
 
-The client supports MQTT 3.1.1 and MQTT 5 over TCP and TLS, username/password authentication, QoS 0/1/2 publish and subscribe, acknowledgements and reconnect/resubscription. Integration coverage exercises QoS 1 and 2 against Mosquitto; validate behavior and TLS trust configuration with the broker deployment you operate.
+The client supports MQTT 3.1.1 and MQTT 5 over TCP and TLS, username/password authentication, QoS 0/1/2 publish and subscribe, acknowledgements and reconnect/resubscription. TLS certificate-chain and peer-name verification use the secure defaults from Localzet Server. For a private certificate authority, pass its PEM file in the `ssl` stream context; do not disable certificate or peer-name verification in production.
 
 ## Dependencies
 
@@ -36,7 +36,7 @@ composer run test:broker
 composer audit --abandoned=report
 ```
 
-`test:broker` requires Docker and uses a temporary Mosquitto broker. It generates disposable credentials and a self-signed certificate; set `MQTT_TEST_PLAIN_PORT` and `MQTT_TEST_TLS_PORT` if local ports 1883 or 8883 are already in use. Test clients disable certificate verification for the ephemeral self-signed certificate, so CI verifies TLS negotiation, not certificate trust configuration.
+`test:broker` requires Docker and uses a temporary Mosquitto broker. It generates disposable credentials, a self-signed server certificate, and an unrelated CA; tests cover successful verification with the trusted certificate and rejection of an untrusted CA and a mismatched peer name. Set `MQTT_TEST_PLAIN_PORT` and `MQTT_TEST_TLS_PORT` if local ports 1883 or 8883 are already in use.
 
 The broker integration suite verifies the documented MQTT 3.1.1 and MQTT 5 flows against Mosquitto. It does not establish compatibility with every broker or deployment-specific certificate trust.
 
