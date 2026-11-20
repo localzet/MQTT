@@ -24,6 +24,7 @@ jobs:
           tools: composer:v2
       - run: composer validate --strict
       - run: composer install --no-interaction --prefer-dist
+      - run: composer dump-autoload --optimize --classmap-authoritative
       - run: composer run test
       - run: composer run test:broker
       - run: composer audit --abandoned=report

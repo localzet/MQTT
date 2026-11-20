@@ -14,6 +14,9 @@ declare(strict_types=1);
 use localzet\MQTT\Server\Protocols\Mqtt;
 use localzet\MQTT\Server\Protocols\Mqtt5;
 use localzet\MQTT\Client;
+use localzet\Server;
+use localzet\Server\Protocols\Mqtt as ServerMqtt;
+use localzet\Server\Protocols\Mqtt5 as ServerMqtt5;
 use localzet\Server\Connection\AsyncTcpConnection;
 use localzet\Server\Connection\TcpConnection;
 
@@ -24,6 +27,7 @@ if (is_file($autoload)) {
     spl_autoload_register(static function (string $class): void {
         $maps = [
             'localzet\\MQTT\\' => dirname(__DIR__) . '/src/',
+            'localzet\\Server\\Protocols\\' => dirname(__DIR__) . '/src/Server/Protocols/',
             'localzet\\Server\\' => dirname(__DIR__, 2) . '/Server/src/',
             'localzet\\' => dirname(__DIR__, 2) . '/Server/',
         ];
@@ -38,6 +42,33 @@ if (is_file($autoload)) {
             }
         }
     });
+
+    require dirname(__DIR__) . '/src/Server/Protocols/aliases.php';
+}
+
+foreach ([
+    Mqtt::class => ServerMqtt::class,
+    Mqtt5::class => ServerMqtt5::class,
+] as $legacyClass => $serverClass) {
+    if (!class_exists($legacyClass, false) || !is_a($legacyClass, $serverClass, true)) {
+        throw new RuntimeException("Composer did not register the MQTT protocol alias {$legacyClass}.");
+    }
+}
+
+foreach ([
+    ['mqtt://127.0.0.1:0', ServerMqtt::class],
+    ['mqtt5://127.0.0.1:0', ServerMqtt5::class],
+] as [$address, $protocol]) {
+    $listener = new Server($address);
+    if ($listener->protocol !== $protocol) {
+        throw new RuntimeException("Server did not resolve {$address} to {$protocol}.");
+    }
+
+    try {
+        $listener->listen();
+    } finally {
+        $listener->unlisten();
+    }
 }
 
 final class ProtocolTestConnection extends TcpConnection
