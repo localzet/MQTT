@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 use localzet\MQTT\Server\Protocols\Mqtt;
 use localzet\MQTT\Server\Protocols\Mqtt5;
+use localzet\MQTT\Protocols\Mqtt as MqttCodec;
 use localzet\MQTT\Client;
 use localzet\Server;
 use localzet\Server\Protocols\Mqtt as ServerMqtt;
@@ -82,6 +83,25 @@ final class ProtocolTestConnection extends TcpConnection
     }
 }
 
+final class DebugCaptureConnection extends AsyncTcpConnection
+{
+    public array $sentPackages = [];
+
+    public function __construct()
+    {
+    }
+
+    public function send(mixed $data, bool $raw = false): ?bool
+    {
+        $this->sentPackages[] = $data;
+        return true;
+    }
+
+    public function __destruct()
+    {
+    }
+}
+
 $connection = new ProtocolTestConnection();
 
 foreach ([Mqtt::class, Mqtt5::class] as $protocol) {
@@ -118,6 +138,80 @@ $mqtt5Client = new Client('mqtts://[::1]', ['protocol_level' => 5]);
 $mqtt5Connection = $connectionProperty->getValue($mqtt5Client);
 if ($mqtt5Connection->protocol !== Mqtt5::class || $mqtt5Connection->transport !== 'ssl' || $portProperty->getValue($mqtt5Connection) !== 8883) {
     throw new RuntimeException('Secure MQTT 5 address did not select TLS, the MQTT 5 protocol, and default port.');
+}
+
+$debugClient = new Client('mqtt://127.0.0.1', [
+    'debug' => true,
+    'protocol_level' => 5,
+    'username' => 'mqtt-debug-user-secret',
+    'password' => 'mqtt-debug-password-secret',
+]);
+$debugConnection = new DebugCaptureConnection();
+$connectionProperty->setValue($debugClient, $debugConnection);
+$stateProperty = new ReflectionProperty(Client::class, '_state');
+$receivedPublish = null;
+$debugClient->onMessage = static function (string $topic, string $content) use (&$receivedPublish): void {
+    $receivedPublish = [$topic, $content];
+};
+ob_start();
+$debugClient->onConnectionConnect();
+$stateProperty->setValue($debugClient, Client::STATE_ESTABLISHED);
+$outgoingTopic = 'mqtt-debug-topic-secret';
+$outgoingPayload = 'mqtt-debug-outgoing-payload-secret';
+$outgoingProperty = 'mqtt-debug-outgoing-property-secret';
+$subscriptionTopic = 'mqtt-debug-subscription-topic-secret';
+$subscriptionProperty = 'mqtt-debug-subscription-property-secret';
+$unsubscribeProperty = 'mqtt-debug-unsubscribe-property-secret';
+$resubscribeTopic = 'mqtt-debug-resubscribe-topic-secret';
+$debugClient->subscribe($subscriptionTopic, ['qos' => 1], null, [
+    'user_properties' => [['name' => 'token', 'value' => $subscriptionProperty]],
+]);
+$debugClient->unsubscribe($subscriptionTopic, null, [
+    'user_properties' => [['name' => 'token', 'value' => $unsubscribeProperty]],
+]);
+$debugClient->subscribe($resubscribeTopic, ['qos' => 1]);
+$debugClient->onMqttReconnect();
+$debugClient->publish($outgoingTopic, $outgoingPayload, [], null, [
+    'user_properties' => [['name' => 'token', 'value' => $outgoingProperty]],
+]);
+$incomingTopic = 'mqtt-debug-incoming-topic-secret';
+$incomingPayload = 'mqtt-debug-incoming-payload-secret';
+$incomingProperty = 'mqtt-debug-incoming-property-secret';
+$debugClient->onConnectionMessage($debugConnection, [
+    'cmd' => MqttCodec::CMD_PUBLISH,
+    'topic' => $incomingTopic,
+    'content' => $incomingPayload,
+    'qos' => 0,
+    'properties' => ['user_properties' => [['name' => 'token', 'value' => $incomingProperty]]],
+]);
+$debugOutput = ob_get_clean();
+$connectPackage = $debugConnection->sentPackages[0] ?? [];
+$publishPackage = null;
+foreach ($debugConnection->sentPackages as $sentPackage) {
+    if (($sentPackage['cmd'] ?? null) === MqttCodec::CMD_PUBLISH) {
+        $publishPackage = $sentPackage;
+        break;
+    }
+}
+if (($connectPackage['username'] ?? null) !== 'mqtt-debug-user-secret'
+    || ($connectPackage['password'] ?? null) !== 'mqtt-debug-password-secret'
+    || ($publishPackage['topic'] ?? null) !== $outgoingTopic
+    || ($publishPackage['content'] ?? null) !== $outgoingPayload
+    || $receivedPublish !== [$incomingTopic, $incomingPayload]
+    || str_contains($debugOutput, $subscriptionTopic)
+    || str_contains($debugOutput, $subscriptionProperty)
+    || str_contains($debugOutput, $unsubscribeProperty)
+    || str_contains($debugOutput, $resubscribeTopic)
+    || str_contains($debugOutput, 'mqtt-debug-user-secret')
+    || str_contains($debugOutput, 'mqtt-debug-password-secret')
+    || str_contains($debugOutput, $outgoingTopic)
+    || str_contains($debugOutput, $outgoingPayload)
+    || str_contains($debugOutput, $outgoingProperty)
+    || str_contains($debugOutput, $incomingTopic)
+    || str_contains($debugOutput, $incomingPayload)
+    || str_contains($debugOutput, $incomingProperty)
+) {
+    throw new RuntimeException('MQTT debug output must omit credentials and PUBLISH data while preserving delivery.');
 }
 
 echo "MQTT protocol regression checks passed.\n";

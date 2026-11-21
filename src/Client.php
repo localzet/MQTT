@@ -263,7 +263,7 @@ class Client
         $this->_connection->connect();
         $this->setConnectionTimeout($this->_options['connect_timeout']);
         if ($this->_options['debug']) {
-            echo "-> Try to connect to {$this->_remoteAddress}", PHP_EOL;
+            echo "-> Try to connect to broker", PHP_EOL;
         }
     }
 
@@ -329,7 +329,7 @@ class Client
         );
 
         if ($this->_options['debug']) {
-            echo "-> Send SUBSCRIBE package, topic:".implode(',', array_keys($topics))." message_id:{$package['message_id']}"." properties:".json_encode($properties), PHP_EOL;
+            echo "-> Send SUBSCRIBE package, topic_count:" . count($topics) . " message_id:{$package['message_id']}", PHP_EOL;
         }
         $this->sendPackage($package);
 
@@ -383,7 +383,7 @@ class Client
             $this->_outgoing[$package['message_id']] = $callback;
         }
         if ($this->_options['debug']) {
-            echo "-> Send UNSUBSCRIBE package, topic:".implode(',', $topics)." message_id:{$package['message_id']}"." properties:".json_encode($properties), PHP_EOL;
+            echo "-> Send UNSUBSCRIBE package, topic_count:" . count($topics) . " message_id:{$package['message_id']}", PHP_EOL;
         }
         $this->sendPackage($package);
     }
@@ -446,7 +446,7 @@ class Client
 
         if ($this->_options['debug']) {
             $message_id = isset($package['message_id']) ? $package['message_id'] : '';
-            echo "-> Send PUBLISH package, topic:$topic content:$content retain:$retain qos:$qos dup:$dup message_id:$message_id"." properties:".json_encode($properties), PHP_EOL;
+            echo "-> Send PUBLISH package, payload_bytes:" . strlen((string)$content) . " retain:$retain qos:$qos dup:$dup message_id:$message_id", PHP_EOL;
         }
 
         $this->sendPackage($package);
@@ -531,7 +531,7 @@ class Client
         $this->_connection->send($package);
         if ($this->_options['debug']) {
             echo "-- Tcp connection established", PHP_EOL;
-            echo "-> Send CONNECT package client_id:{$this->_options['client_id']} username:{$this->_options['username']} password:{$this->_options['password']} clean_session:{$this->_options['clean_session']} protocol_name:{$this->_options['protocol_name']} protocol_level:{$this->_options['protocol_level']}", PHP_EOL;
+            echo "-> Send CONNECT package clean_session:{$this->_options['clean_session']} protocol_name:{$this->_options['protocol_name']} protocol_level:{$this->_options['protocol_level']}", PHP_EOL;
         }
     }
 
@@ -549,8 +549,8 @@ class Client
             );
             $this->sendPackage($package);
             if ($this->_options['debug']) {
-                echo "-> Send SUBSCRIBE(Resubscribe) package topics:" .
-                    implode(',', array_keys($this->_resubscribeTopics))." message_id:{$package['message_id']}", PHP_EOL;
+                echo "-> Send SUBSCRIBE(Resubscribe) package, topic_count:" . count($this->_resubscribeTopics) .
+                    " message_id:{$package['message_id']}", PHP_EOL;
             }
         }
     }
@@ -605,7 +605,7 @@ class Client
                 $message_id = $data['message_id'] ?? '';
                 $properties = $data['properties'] ?? [];
                 if ($this->_options['debug']) {
-                    echo "<- Recv PUBLISH package, message_id:$message_id qos:$qos topic:$topic content:$content properties:".json_encode($properties), PHP_EOL;
+                    echo "<- Recv PUBLISH package, message_id:$message_id qos:$qos payload_bytes:" . strlen((string)$content), PHP_EOL;
                 }
                 call_user_func($this->onMessage, $topic, $content, $this);
                 // Connection may be closed in onMessage callback.
